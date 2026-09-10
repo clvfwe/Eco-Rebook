@@ -96,26 +96,23 @@ const PROMPT=`당신은 에코리북의 원료 선별 AI입니다. 에코리북�
 - 이물질: 스프링, 스테이플, 테이프, 스티커, 비닐 커버, 플라스틱 인덱스는 떼어내면 쓸 수 있으므로 전처리 대상.
 - 필기, 밑줄, 형광펜, 찢어짐, 구겨짐은 파쇄 예정이므로 문제 없음.
 
-각 항목 status는 다음 셋 중 하나입니다.
-- "pass": 문제 없음
-- "pretreat": 전처리(제거·분리)하면 사용 가능
-- "fail": 사용 불가
-
-problem_areas에는 사진에서 발견된 모든 문제 위치를 넣으세요. 좌표는 이미지 전체 기준 0~100 백분율입니다. 스프링이나 긴 테이프처럼 길게 이어진 것은 그 선을 따라 5~10개 좌표를 배열하세요. 각 좌표마다 무엇인지(label), 어떻게 처리할지(action), 성격(kind: "pretreat" 또는 "fail")을 적으세요.
-
-pretreatment_steps에는 작업자가 순서대로 할 전처리 작업을 짧은 문장으로 나열하세요. 없으면 빈 배열.
+problem_areas에는 사진에서 발견된 모든 문제 위치를 넣으세요. 좌표는 이미지 전체 기준 0~100 백분율입니다. 스프링이나 긴 테이프처럼 길게 이어진 것은 그 선을 따라 5~10개 좌표를 배열하세요. 각 좌표마다 무엇인지(label)와 성격(kind: "pretreat" 또는 "fail")을 적으세요.
 
 반드시 마크다운 없이 순수 JSON만 응답하세요:
 {
   "is_paper_material": true,
-  "material": {"status":"pass","reason":"..."},
-  "contamination": {"status":"pass","reason":"..."},
-  "foreign": {"status":"pretreat","reason":"..."},
-  "problem_areas": [{"x_pct":20,"y_pct":30,"label":"스프링","action":"제거","kind":"pretreat"}],
-  "pretreatment_steps": ["좌측 제본부 스프링 제거","표지 코팅지 분리"],
   "overall": "적합" | "전처리 후 적합" | "부적합",
-  "summary": "한두 문장 요약"
-}`;
+  "score": 72,
+  "issues": [
+    {"category":"이물질","severity":"중간","description":"제본부 스프링 검출","action":"스프링 제거 후 투입"},
+    {"category":"재질","severity":"중간","description":"표지 코팅지 검출","action":"표지 분리"},
+    {"category":"필기","severity":"낮음","description":"내지 연필 필기, 공정에 영향 없음","action":""}
+  ],
+  "problem_areas": [{"x_pct":20,"y_pct":30,"label":"스프링","kind":"pretreat"}],
+  "recommendation": "스프링과 표지 제거 후 파쇄 라인 투입. 내지는 전량 사용 가능."
+}
+
+score는 0~100 원료 품질 지수(100이 이상적 원료). issues의 category는 재질/오염/이물질/필기/기타, severity는 낮음/중간/높음. description은 "무엇이 어디서 검출됐는지" 짧게, action은 필요한 전처리(없으면 빈 문자열). 문제가 없으면 issues는 빈 배열. recommendation은 작업자용 공정 지침 한두 문장.`;
 
 run.onclick=async()=>{
   if(!img)return;
@@ -137,32 +134,26 @@ run.onclick=async()=>{
 };
 
 function cls(v){return v==='적합'?'ok':v==='부적합'?'no':'pre';}
-function scls(s){return s==='pass'?'ok':s==='fail'?'no':'pre';}
-function stxt(s){return s==='pass'?'문제 없음':s==='fail'?'사용 불가':'전처리 필요';}
+function sev(v){return v==='낮음'?'low':v==='높음'?'high':'mid';}
 
 function render(r){
   const areas=Array.isArray(r.problem_areas)?r.problem_areas:[];
-  const steps=Array.isArray(r.pretreatment_steps)?r.pretreatment_steps:[];
+  const issues=Array.isArray(r.issues)?r.issues:[];
   const overall=r.overall||'전처리 후 적합';
-  const sub=overall==='적합'?'바로 투입할 수 있습니다':overall==='부적합'?'투입 불가, 폐기 처리':'아래 전처리 작업 후 투입';
+  const k=cls(overall);
+  const score=typeof r.score==='number'?Math.max(0,Math.min(100,Math.round(r.score))):null;
   let h=`
-    <div class="vbox ${cls(overall)}"><div class="vt">${esc(overall)}</div><div class="vs">${sub}</div></div>
-    <p class="summary">${esc(r.summary||'')}</p>`;
+    <div class="rv"><span class="rbadge ${k}">${esc(overall)}</span>${score!==null?`<span class="rscore">원료 품질 지수 <b>${score} / 100</b></span>`:''}</div>
+    <div class="rbar ${k}"><span style="width:${score!==null?score:0}%"></span></div>`;
   if(areas.length)h+=`<div class="map" id="map"><canvas id="cv"></canvas></div>`;
-  h+=`<div class="sec">항목별 판정</div>`;
-  [['material','재질'],['contamination','오염'],['foreign','이물질']].forEach(([k,t])=>{
-    const v=r[k]||{status:'fail',reason:''};
-    h+=`<div class="item"><div><b>${t}</b><div class="r">${esc(v.reason||'')}</div></div><span class="tag ${scls(v.status)}">${stxt(v.status)}</span></div>`;
-  });
-  h+=`<div class="sec">전처리 작업</div>`;
-  if(overall==='부적합'){
-    h+=`<div class="none" style="background:var(--bad-light);color:var(--bad)">투입 불가 원료입니다. 폐기 처리해 주세요.</div>`;
-  }else if(!steps.length&&!areas.filter(a=>a.kind!=='fail').length){
-    h+=`<div class="none">전처리 없이 바로 투입할 수 있어요.</div>`;
+  if(issues.length){
+    issues.forEach(it=>{
+      h+=`<div class="rrow"><span class="rtag ${sev(it.severity)}">${esc(it.severity||'중간')}</span><div><b>${esc(it.category||'기타')}</b> <span class="rd">— ${esc(it.description||'')}</span>${it.action?`<br><span class="rd">조치: ${esc(it.action)}</span>`:''}</div></div>`;
+    });
   }else{
-    const list=steps.length?steps.map((s,i)=>({label:s,action:'',kind:'pretreat'})):dedupe(areas);
-    h+=`<ul class="todo">`+list.map((a,i)=>`<li><span class="num ${a.kind==='fail'?'no':''}">${i+1}</span><div><b>${esc(a.label)}</b>${a.action?`<span class="act">${esc(a.action)}</span>`:''}</div></li>`).join('')+`</ul>`;
+    h+=`<div class="rrow"><span class="rtag low">양호</span><div><b>검출된 문제 없음</b> <span class="rd">— 바로 투입할 수 있는 원료입니다</span></div></div>`;
   }
+  if(r.recommendation)h+=`<div class="rnote"><b>공정 지침</b>${esc(r.recommendation)}</div>`;
   out.innerHTML=h;
   if(areas.length)drawMap(areas);
 }
