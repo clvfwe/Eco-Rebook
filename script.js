@@ -28,7 +28,7 @@ function submitForm(){
   b.textContent='신청이 접수됐습니다. 곧 연락드리겠습니다.';
   b.disabled=true;
 }
-const GEMINI_API_KEY="AQ.Ab8RN6KBt3nEl01D4FI7tKB-eINcsxAfpvsgIkbIiN9147gY0w";
+const GEMINI_API_KEY="AQ.Ab8RN6KIylnvocYrPP_Xn5QXkT2Mnw7cTR7qzuJRcYvgFy_Jyg";
 const MODEL="gemini-3.6-flash";
 
 const file=document.getElementById('file'),dropInner=document.getElementById('dropInner'),drop=document.getElementById('drop');
