@@ -126,7 +126,7 @@ function normalize(d){
   type:d.paper_type_text||"미분류", typeConf:d.paper_type_conf??null,
   ratio:d.stain_ratio||0, review:!!d.review, size:d.image_size||null,
   dets:(d.detections||[]).map(x=>({label:x.label,conf:x.confidence,box:x.box})),
-  img:null, photo:d.photo||null, heat:d.heatmap||null, guides:d.guides||[]};}
+  photo:d.photo||null, heat:d.heatmap||null, guides:d.guides||[]};}
 
 /* 화면 전환 */
 function show(n){

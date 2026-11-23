@@ -25,7 +25,6 @@ import csv
 import hashlib
 import io
 import json
-import os
 import sqlite3
 import threading
 from datetime import datetime
@@ -49,8 +48,7 @@ PREDICT_CONF = 0.15      # 모델이 후보를 뽑는 기준 (최종 기준은 R
 HEATMAP = True           # 히트맵을 응답에 넣을지 (끄면 조금 더 빠름)
 HEAT_FLOOR = 0.2         # 히트맵에서 이 값보다 약한 반응은 표시하지 않음 (0~1)
 RECORD_DIR = HERE / "records"   # 판정 기록(사진·히트맵·records.db)이 쌓이는 폴더
-HOST = os.environ.get("HOST", "127.0.0.1")   # 호스팅에서는 환경변수로 0.0.0.0 을 넘김 (Dockerfile 참고)
-PORT = int(os.environ.get("PORT", 8000))
+HOST, PORT = "127.0.0.1", 8000
 
 # 화면에 보여 줄 짧은 이름
 SHORT = {"spring": "스프링", "staple": "스테이플", "tape": "테이프", "vinyl": "코팅", "stain": "오염", "pii": "개인정보"}
@@ -522,7 +520,7 @@ PAGE = r'''<!DOCTYPE html>
 :root{
   color-scheme:dark;
   --ink:#f2f4f3; --sub:#9a9fa6; --bg:#1b1c20; --row:#2a2c31; --line:#34363c;
-  --lime:#32e8a5; --lime-d:#32e8a5; --on:#06201a; --warn:#ffb54d; --bad:#ff7b7b;
+  --lime:#32e8a5; --on:#06201a; --warn:#ffb54d; --bad:#ff7b7b;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
@@ -539,7 +537,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .splash.hide{opacity:0;pointer-events:none}
 .logo{color:#fff;font-family:"KimWildGag","Pretendard Variable",sans-serif;font-size:36px;font-weight:400;letter-spacing:0}
 .logo i{color:#32e8a5;font-style:normal}
-.ring{width:30px;height:30px;border-radius:50%;border:2px solid #333;border-top-color:var(--lime-d);animation:sp 1s linear infinite}
+.ring{width:30px;height:30px;border-radius:50%;border:2px solid #333;border-top-color:var(--lime);animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* screens */
@@ -557,7 +555,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 
 .drop{margin-top:16px;border-radius:20px;background:var(--row);border:1.5px dashed #44474e;min-height:250px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;text-align:center;gap:6px;cursor:pointer;position:relative;overflow:hidden}
-.drop.over{outline:2px solid var(--lime-d)}
+.drop.over{outline:2px solid var(--lime)}
 .drop .plus{width:52px;height:52px;border-radius:50%;background:var(--lime);display:grid;place-items:center;margin-bottom:8px;box-shadow:0 0 24px rgba(50,232,165,.45)}
 .drop b{font-size:16px}.drop small{color:var(--sub);font-size:13px}
 .drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -569,7 +567,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .sec{font-size:13px;font-weight:640;color:var(--sub);margin:26px 0 10px}
 .how{display:grid;gap:8px}
 .how div{background:var(--row);border-radius:12px;padding:13px 14px;font-size:14px;display:flex;gap:12px;align-items:center}
-.how em{font-style:normal;font-weight:730;color:var(--lime-d);width:14px}
+.how em{font-style:normal;font-weight:730;color:var(--lime);width:14px}
 
 /* result */
 .imgbox{position:relative;border-radius:18px;overflow:hidden;background:var(--row);margin-top:8px}
@@ -582,13 +580,13 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .verdict.warn{background:rgba(255,181,77,.08);border:1px solid rgba(255,181,77,.25)}
 .verdict.bad{background:rgba(255,123,123,.08);border:1px solid rgba(255,123,123,.25)}
 .vbadge{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;flex-shrink:0;font-size:30px;font-weight:800;letter-spacing:-.03em}
-.verdict.ok .vbadge{background:rgba(50,232,165,.18);color:var(--lime-d)}
+.verdict.ok .vbadge{background:rgba(50,232,165,.18);color:var(--lime)}
 .verdict.warn .vbadge{background:rgba(255,181,77,.18);color:var(--warn)}
 .verdict.bad .vbadge{background:rgba(255,123,123,.18);color:var(--bad)}
 .vinfo{flex:1;min-width:0}
 .vtitle{font-size:17px;font-weight:730;letter-spacing:-.02em}
 .vdesc{font-size:13px;color:var(--sub);margin-top:3px;line-height:1.5}
-.verdict.ok .vtitle{color:var(--lime-d)}.verdict.warn .vtitle{color:var(--warn)}.verdict.bad .vtitle{color:var(--bad)}
+.verdict.ok .vtitle{color:var(--lime)}.verdict.warn .vtitle{color:var(--warn)}.verdict.bad .vtitle{color:var(--bad)}
 /* key-info panels */
 .kpanels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .kp{background:var(--row);border-radius:14px;padding:12px 14px}
@@ -606,12 +604,12 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .chip i{width:8px;height:8px;border-radius:50%}
 .list{display:grid;gap:8px}
 .item{background:var(--row);border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:12px;font-size:14.5px}
-.item .n{color:var(--lime-d);font-weight:730;width:14px}
+.item .n{color:var(--lime);font-weight:730;width:14px}
 .item .nm{flex:1;font-weight:550}
 .item .pc{font-variant-numeric:tabular-nums;font-weight:640}
 .item .pc.low{color:var(--warn)}
 .empty{color:var(--sub);text-align:center;padding:50px 0;font-size:14px}
-.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--lime-d);animation:sp .9s linear infinite;margin:0 auto 14px}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--lime);animation:sp .9s linear infinite;margin:0 auto 14px}
 
 /* history */
 .hist{display:flex;gap:12px;align-items:center;background:var(--row);border-radius:14px;padding:10px;margin-bottom:8px;width:100%;text-align:left}
@@ -624,9 +622,9 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
 .tabs{display:flex;border-top:1px solid var(--line);padding:8px 0 max(10px,env(safe-area-inset-bottom));background:#17181b}
 .tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;color:#6f747b;font-weight:550}
 .tabs button.act{color:var(--ink)}
-.tabs button.act svg{stroke:var(--lime-d)}
+.tabs button.act svg{stroke:var(--lime)}
 svg{display:block}.screen::-webkit-scrollbar{display:none}.screen{scrollbar-width:none}
-:focus-visible{outline:3px solid var(--lime-d);outline-offset:2px}
+:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.ring,.spin{animation-duration:3s}.splash{transition:none}}
 
 /* 화면 크기에 따라 유동적으로 */
@@ -702,7 +700,7 @@ const CONFIG = {
   LOW_CONF: 0.5,                             // 미만이면 사람 검수 안내
   TIMEOUT_MS: 30000
 };
-/* 응답 예시 — demo/api_server.py 기준 (이름이 다르면 normalize()만 수정)
+/* 응답 예시 — /predict 기준 (이름이 다르면 normalize()만 수정)
 { "grade":"B", "grade_text":"B등급", "grade_after":"A", "grade_after_text":"A등급", "grade_note":"...",
   "paper_type_text":"제본", "paper_type_conf":0.97, "stain_ratio":0.0, "review":false, "image_size":[w,h],
   "detections":[{"type":"staple","label":"스테이플","confidence":0.91,"box":[x1,y1,x2,y2]}],
@@ -721,7 +719,7 @@ function normalize(d){
   type:d.paper_type_text||"미분류", typeConf:d.paper_type_conf??null,
   ratio:d.stain_ratio||0, review:!!d.review, size:d.image_size||null,
   dets:(d.detections||[]).map(x=>({label:x.label,conf:x.confidence,box:x.box})),
-  img:null, photo:d.photo||null, heat:d.heatmap||null, guides:d.guides||[]};}
+  photo:d.photo||null, heat:d.heatmap||null, guides:d.guides||[]};}
 
 /* 화면 전환 */
 function show(n){
@@ -816,7 +814,6 @@ function render(r){
 function draw(r,mode){
   const box=$("imgbox"); box.innerHTML="";
   if(mode==="heat"&&r.heat){box.innerHTML=`<img src="${r.heat}" alt="히트맵">`;return}
-  if(r.img){box.innerHTML=`<img src="${r.img}" alt="탐지 결과">`;return}
   const im=new Image(); im.alt="탐지 결과"; im.src=r.photo||url;
   im.onload=()=>{
     const [W,H]=r.size||[im.naturalWidth,im.naturalHeight]; box.appendChild(im);

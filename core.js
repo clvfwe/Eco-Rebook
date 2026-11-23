@@ -169,5 +169,5 @@
     };
   }
 
-  g.ECO = { NAMES, TYPE_NAMES, TYPE_KO, GRADE_KO, RULES, unionRatio, grade, letterbox, candidates, nms, heatGrid, paperType, buildResult };
+  g.ECO = { RULES, letterbox, candidates, nms, heatGrid, paperType, buildResult };
 })(typeof window !== "undefined" ? window : globalThis);
